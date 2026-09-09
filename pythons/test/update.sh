@@ -47,11 +47,25 @@ bash ./update.sh >/dev/null 2>&1 || fail "second update failed"
 cmp -s index.before index.html || fail "second update changed index.html"
 [ "$(grep -Fxc "$entry" index.html)" -eq 1 ] || fail "prebuilt archive is listed more than once"
 
+bad_name=$'bad\nname'
+printf 'archive=bad\narchive=name.tar.gz\n' > "binaries/$bad_name.meta"
+printf archive-data > "binaries/$bad_name.tar.gz"
+printf definition > "binaries/$bad_name"
+rm "$sha"
+if output="$(bash ./update.sh 2>&1)"; then
+  fail "update accepted a control character in an archive name"
+fi
+case "$output" in
+*"Invalid archive name in binaries/"*) ;;
+*) fail "update did not reject the invalid archive name during validation" ;;
+esac
+[ ! -e "$sha" ] || fail "update created a checksum link before name validation completed"
+rm "binaries/$bad_name.meta" "binaries/$bad_name.tar.gz" "binaries/$bad_name"
+
 mkdir source
 printf source-data > source/example.tar.gz
 printf '<li><a href="">example.tar.gz</a></li>\n' >> index.html
 cp index.html index.before
-rm "$sha"
 cp binaries/3.14.0-ubuntu-24.04-x86_64.meta binaries/z-invalid.meta
 sed -i 's/^archive=.*/archive=invalid.tar.gz/' binaries/z-invalid.meta
 if bash ./update.sh >/dev/null 2>&1; then

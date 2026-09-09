@@ -61,6 +61,12 @@ for meta in binaries/*.meta; do
   [ -e "$meta" ] || continue
   name="$(basename "$meta" .meta)"
   archive="$(sed -n 's/^archive=//p' "$meta")"
+  case "$archive" in
+  "" | *[!A-Za-z0-9._-]*)
+    echo "Invalid archive name in $meta" >&2
+    exit 1
+    ;;
+  esac
   if [ "$archive" != "$name.tar.gz" ]; then
     echo "Invalid archive in $meta" >&2
     exit 1
