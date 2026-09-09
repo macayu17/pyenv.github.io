@@ -2,6 +2,8 @@
 
 set -e
 
+cd "${BASH_SOURCE%/*}/.."
+
 fail() {
   echo "$1" >&2
   exit 1
@@ -45,6 +47,22 @@ bash ./update.sh >/dev/null 2>&1 || fail "second update failed"
 cmp -s index.before index.html || fail "second update changed index.html"
 [ "$(grep -Fxc "$entry" index.html)" -eq 1 ] || fail "prebuilt archive is listed more than once"
 
+mkdir source
+printf source-data > source/example.tar.gz
+printf '<li><a href="">example.tar.gz</a></li>\n' >> index.html
+cp index.html index.before
+rm "$sha"
+cp binaries/3.14.0-ubuntu-24.04-x86_64.meta binaries/z-invalid.meta
+sed -i 's/^archive=.*/archive=invalid.tar.gz/' binaries/z-invalid.meta
+if bash ./update.sh >/dev/null 2>&1; then
+  fail "update accepted invalid metadata"
+fi
+[ ! -e "$sha" ] || fail "update created a binary checksum link before validation completed"
+source_sha=6bb69d845f4a714ca982e2903d2c03fabeb2448b67185bca413d3efddea9397c
+[ ! -e "$source_sha" ] || fail "update created a source checksum link before validation completed"
+cmp -s index.before index.html || fail "update changed index.html before validation completed"
+rm -rf source binaries/z-invalid.meta
+
 write_meta ../outside.tar.gz
 printf outside > outside.tar.gz
 if bash ./update.sh >/dev/null 2>&1; then
@@ -55,6 +73,12 @@ write_meta 3.14.0-ubuntu-24.04-x86_64.tar.gz
 rm binaries/3.14.0-ubuntu-24.04-x86_64
 if bash ./update.sh >/dev/null 2>&1; then
   fail "update accepted a missing definition"
+fi
+
+printf definition > binaries/3.14.0-ubuntu-24.04-x86_64
+rm binaries/3.14.0-ubuntu-24.04-x86_64.tar.gz
+if bash ./update.sh >/dev/null 2>&1; then
+  fail "update accepted a missing archive"
 fi
 
 echo "ok"

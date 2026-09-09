@@ -50,18 +50,12 @@ compute_md5() {
   fi
 }
 
-for file in source/*; do
-  [ -e "$file" ] || continue
-  base="$(basename "$file")"
-  #md5="$(compute_md5 < "$file")"
-  sha="$(compute_sha2 < "$file")"
-  #ln -f "$file" "$md5"
-  ln -f "$file" "$sha"
-  sed -i -e "/>$base</s/^.*$/<li><a href=\"$sha\">$base<\/a><\/li>/" index.html
-done
-
-list="$(mktemp)"
-trap 'rm -f "$list"' EXIT
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
+list="$tmpdir/list"
+links="$tmpdir/links"
+: > "$list"
+: > "$links"
 
 for meta in binaries/*.meta; do
   [ -e "$meta" ] || continue
@@ -76,10 +70,24 @@ for meta in binaries/*.meta; do
     exit 1
   fi
   sha="$(compute_sha2 < "binaries/$archive")"
-  ln -f "binaries/$archive" "$sha"
+  printf '%s\n%s\n' "$archive" "$sha" >> "$links"
   printf '<li><a href="binaries/%s">%s</a> (<a href="binaries/%s">definition</a>)</li>\n' \
     "$archive" "$archive" "$name" >> "$list"
 done
+
+for file in source/*; do
+  [ -e "$file" ] || continue
+  base="$(basename "$file")"
+  #md5="$(compute_md5 < "$file")"
+  sha="$(compute_sha2 < "$file")"
+  #ln -f "$file" "$md5"
+  ln -f "$file" "$sha"
+  sed -i -e "/>$base</s/^.*$/<li><a href=\"$sha\">$base<\/a><\/li>/" index.html
+done
+
+while IFS= read -r archive && IFS= read -r sha; do
+  ln -f "binaries/$archive" "$sha"
+done < "$links"
 
 awk -v list="$list" '
   /<ul id="prebuilt-cpython">/ {
