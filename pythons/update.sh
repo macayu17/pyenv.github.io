@@ -9,8 +9,11 @@
 # 2. Download the archive from origin and save it in `./source`
 # 3. Run `./update.sh`
 # 4. Check diff of `./index.html` if the checksum is calculated properly
-# 5. Commit files with name of `md5sum` and `sha256sum` of the archive
+# 5. Commit the checksum-named archive files
 # 6. Push changes to the origin
+#
+# To add a prebuilt CPython, copy the archive, metadata and definition produced
+# by `pyenv binary package` to `./binaries`. The index entry is generated here.
 #
 
 set -e
@@ -48,6 +51,7 @@ compute_md5() {
 }
 
 for file in source/*; do
+  [ -e "$file" ] || continue
   base="$(basename "$file")"
   #md5="$(compute_md5 < "$file")"
   sha="$(compute_sha2 < "$file")"
@@ -55,5 +59,39 @@ for file in source/*; do
   ln -f "$file" "$sha"
   sed -i -e "/>$base</s/^.*$/<li><a href=\"$sha\">$base<\/a><\/li>/" index.html
 done
+
+list="$(mktemp)"
+trap 'rm -f "$list"' EXIT
+
+for meta in binaries/*.meta; do
+  [ -e "$meta" ] || continue
+  name="$(basename "$meta" .meta)"
+  archive="$(sed -n 's/^archive=//p' "$meta")"
+  if [ "$archive" != "$name.tar.gz" ]; then
+    echo "Invalid archive in $meta" >&2
+    exit 1
+  fi
+  if [ ! -f "binaries/$archive" ] || [ ! -f "binaries/$name" ]; then
+    echo "Missing archive or definition for $name" >&2
+    exit 1
+  fi
+  sha="$(compute_sha2 < "binaries/$archive")"
+  ln -f "binaries/$archive" "$sha"
+  printf '<li><a href="binaries/%s">%s</a> (<a href="binaries/%s">definition</a>)</li>\n' \
+    "$archive" "$archive" "$name" >> "$list"
+done
+
+awk -v list="$list" '
+  /<ul id="prebuilt-cpython">/ {
+    print
+    while ((getline line < list) > 0) print line
+    close(list)
+    replacing = 1
+    next
+  }
+  replacing && /<\/ul>/ { replacing = 0 }
+  !replacing { print }
+' index.html > index.html.tmp
+mv index.html.tmp index.html
 
 # vim:set ft=sh :
