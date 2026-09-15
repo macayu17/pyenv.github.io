@@ -28,18 +28,18 @@ trap 'rm -rf "$tmpdir"' EXIT
 
 cp update.sh index.html "$tmpdir"
 mkdir "$tmpdir/binaries"
-printf archive-data > "$tmpdir/binaries/3.14.0-ubuntu-24.04-x86_64.tar.gz"
+printf archive-data > "$tmpdir/binaries/3.14.0-ubuntu-24.04-x86_64.tar.xz"
 printf definition > "$tmpdir/binaries/3.14.0-ubuntu-24.04-x86_64"
 
 cd "$tmpdir"
-write_meta 3.14.0-ubuntu-24.04-x86_64.tar.gz
+write_meta 3.14.0-ubuntu-24.04-x86_64.tar.xz
 bash ./update.sh >/dev/null 2>&1 || fail "update failed"
 
 sha=8a6111c3ca752ed6d5f8e8a6daa3ba4b8c3b0bf55f00a87ac2b285024ef87e5f
-[ "binaries/3.14.0-ubuntu-24.04-x86_64.tar.gz" -ef "$sha" ] ||
+[ "binaries/3.14.0-ubuntu-24.04-x86_64.tar.xz" -ef "$sha" ] ||
   fail "checksum path is not a hardlink to the archive"
 
-entry='<li><a href="binaries/3.14.0-ubuntu-24.04-x86_64.tar.gz">3.14.0-ubuntu-24.04-x86_64.tar.gz</a> (<a href="binaries/3.14.0-ubuntu-24.04-x86_64">definition</a>)</li>'
+entry='<li><a href="binaries/3.14.0-ubuntu-24.04-x86_64.tar.xz">3.14.0-ubuntu-24.04-x86_64.tar.xz</a> (<a href="binaries/3.14.0-ubuntu-24.04-x86_64">definition</a>)</li>'
 grep -Fqx "$entry" index.html || fail "prebuilt archive is missing from index.html"
 
 cp index.html index.before
@@ -83,14 +83,14 @@ if bash ./update.sh >/dev/null 2>&1; then
   fail "update accepted an archive outside binaries"
 fi
 
-write_meta 3.14.0-ubuntu-24.04-x86_64.tar.gz
+write_meta 3.14.0-ubuntu-24.04-x86_64.tar.xz
 rm binaries/3.14.0-ubuntu-24.04-x86_64
 if bash ./update.sh >/dev/null 2>&1; then
   fail "update accepted a missing definition"
 fi
 
 printf definition > binaries/3.14.0-ubuntu-24.04-x86_64
-rm binaries/3.14.0-ubuntu-24.04-x86_64.tar.gz
+rm binaries/3.14.0-ubuntu-24.04-x86_64.tar.xz
 if bash ./update.sh >/dev/null 2>&1; then
   fail "update accepted a missing archive"
 fi
