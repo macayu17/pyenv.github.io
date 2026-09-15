@@ -10,15 +10,16 @@ fail() {
 }
 
 write_meta() {
-  cat > binaries/3.14.0-ubuntu-24.04-x86_64.meta <<EOF
+  local name="${2:-3.14.0-ubuntu-24.04-x86_64}"
+  cat > "binaries/$name.meta" <<EOF
 # pyenv-binary metadata
-version=3.14.0
+version=${name%%-*}
 os=Linux
 arch=x86_64
 platform=linux-x86_64
 distro=ubuntu 24.04
 libc=glibc 2.39
-build_prefix=/tmp/pyenv/versions/3.14.0-ubuntu-24.04-x86_64
+build_prefix=/tmp/pyenv/versions/$name
 archive=$1
 EOF
 }
@@ -30,9 +31,13 @@ cp update.sh index.html "$tmpdir"
 mkdir "$tmpdir/binaries"
 printf archive-data > "$tmpdir/binaries/3.14.0-ubuntu-24.04-x86_64.tar.xz"
 printf definition > "$tmpdir/binaries/3.14.0-ubuntu-24.04-x86_64"
+gzip_name=3.13.0-ubuntu-24.04-x86_64
+printf gzip-archive-data > "$tmpdir/binaries/$gzip_name.tar.gz"
+printf definition > "$tmpdir/binaries/$gzip_name"
 
 cd "$tmpdir"
 write_meta 3.14.0-ubuntu-24.04-x86_64.tar.xz
+write_meta "$gzip_name.tar.gz" "$gzip_name"
 bash ./update.sh >/dev/null 2>&1 || fail "update failed"
 
 sha=8a6111c3ca752ed6d5f8e8a6daa3ba4b8c3b0bf55f00a87ac2b285024ef87e5f
@@ -42,10 +47,18 @@ sha=8a6111c3ca752ed6d5f8e8a6daa3ba4b8c3b0bf55f00a87ac2b285024ef87e5f
 entry='<li><a href="binaries/3.14.0-ubuntu-24.04-x86_64.tar.xz">3.14.0-ubuntu-24.04-x86_64.tar.xz</a> (<a href="binaries/3.14.0-ubuntu-24.04-x86_64">definition</a>)</li>'
 grep -Fqx "$entry" index.html || fail "prebuilt archive is missing from index.html"
 
+gzip_sha=c809857f5fa564e1a2fdb3618161114bfb9a9c624ade6b580f6d79df0adfcc26
+[ "binaries/$gzip_name.tar.gz" -ef "$gzip_sha" ] ||
+  fail "gzip checksum path is not a hardlink to the archive"
+
+gzip_entry="<li><a href=\"binaries/$gzip_name.tar.gz\">$gzip_name.tar.gz</a> (<a href=\"binaries/$gzip_name\">definition</a>)</li>"
+grep -Fqx "$gzip_entry" index.html || fail "gzip prebuilt archive is missing from index.html"
+
 cp index.html index.before
 bash ./update.sh >/dev/null 2>&1 || fail "second update failed"
 cmp -s index.before index.html || fail "second update changed index.html"
 [ "$(grep -Fxc "$entry" index.html)" -eq 1 ] || fail "prebuilt archive is listed more than once"
+[ "$(grep -Fxc "$gzip_entry" index.html)" -eq 1 ] || fail "gzip prebuilt archive is listed more than once"
 
 bad_name=$'bad\nname'
 printf 'archive=bad\narchive=name.tar.gz\n' > "binaries/$bad_name.meta"
