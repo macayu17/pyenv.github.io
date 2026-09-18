@@ -85,13 +85,14 @@ assert_failure() {
   printf source-data > source/example.tar.gz
   printf '<li><a href="">example.tar.gz</a></li>\n' >> index.html
   cp index.html index.before
+  printf '%s\n' * > "$BATS_TEST_TMPDIR/files.before"
 
   run bash ./update.sh
   assert_failure
 
   [[ "$output" == *"Invalid archive name in binaries/z-invalid.meta"* ]]
-  [ ! -e 8a6111c3ca752ed6d5f8e8a6daa3ba4b8c3b0bf55f00a87ac2b285024ef87e5f ]
-  [ ! -e 6bb69d845f4a714ca982e2903d2c03fabeb2448b67185bca413d3efddea9397c ]
+  printf '%s\n' * > "$BATS_TEST_TMPDIR/files.after"
+  cmp -s "$BATS_TEST_TMPDIR/files.before" "$BATS_TEST_TMPDIR/files.after"
   cmp -s index.before index.html
 }
 
