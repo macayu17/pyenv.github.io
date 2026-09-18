@@ -67,13 +67,6 @@ for meta in binaries/*.meta; do
     exit 1
     ;;
   esac
-  case "$archive" in
-  "$name.tar.gz" | "$name.tar.xz") ;;
-  *)
-    echo "Invalid archive in $meta" >&2
-    exit 1
-    ;;
-  esac
   if [ ! -f "binaries/$archive" ] || [ ! -f "binaries/$name" ]; then
     echo "Missing archive or definition for $name" >&2
     exit 1
