@@ -84,16 +84,13 @@ assert_failure() {
   mkdir source
   printf source-data > source/example.tar.gz
   printf '<li><a href="">example.tar.gz</a></li>\n' >> index.html
-  cp index.html index.before
-  printf '%s\n' * > "$BATS_TEST_TMPDIR/files.before"
+  cp -R . "$BATS_TEST_TMPDIR/site.before"
 
   run bash ./update.sh
   assert_failure
 
   [[ "$output" == *"Invalid archive name in binaries/z-invalid.meta"* ]]
-  printf '%s\n' * > "$BATS_TEST_TMPDIR/files.after"
-  cmp -s "$BATS_TEST_TMPDIR/files.before" "$BATS_TEST_TMPDIR/files.after"
-  cmp -s index.before index.html
+  diff -r "$BATS_TEST_TMPDIR/site.before" .
 }
 
 @test "uses a safe archive name from metadata" {
