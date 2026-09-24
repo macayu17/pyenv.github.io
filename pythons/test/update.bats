@@ -13,6 +13,7 @@ write_meta() {
   cat > "binaries/$name.meta" <<EOF
 # pyenv-binary metadata
 version=${name%%-*}
+source_version=${name%%-*}
 os=Linux
 arch=x86_64
 platform=linux-x86_64
@@ -47,6 +48,31 @@ assert_failure() {
   [ "$status" -ne 0 ]
 }
 
+@test "writes a prebuilt binary index" {
+  write_archives
+
+  run bash ./update.sh
+  assert_success
+
+  cat > expected-index <<'EOF'
+source_version	entry	os	arch	distro
+3.13.0	3.13.0-ubuntu-24.04-x86_64	Linux	x86_64	ubuntu 24.04
+3.14.0	3.14.0-ubuntu-24.04-x86_64	Linux	x86_64	ubuntu 24.04
+EOF
+  cmp -s expected-index binaries/index.tsv
+}
+
+@test "rejects metadata without a source version" {
+  write_archives
+  sed -i '/^source_version=/d' binaries/3.14.0-ubuntu-24.04-x86_64.meta
+
+  run bash ./update.sh
+  assert_failure
+
+  [[ "$output" == *"Missing source version in binaries/3.14.0-ubuntu-24.04-x86_64.meta"* ]]
+  [ ! -e binaries/index.tsv ]
+}
+
 @test "indexes xz and gzip prebuilt archives" {
   write_archives
 
@@ -79,7 +105,7 @@ assert_failure() {
 
 @test "rejects unsafe archive names before updating files" {
   write_archives
-  printf 'archive=bad\narchive=name.tar.gz\n' > binaries/z-invalid.meta
+  printf 'source_version=3.14.0\narchive=bad\narchive=name.tar.gz\n' > binaries/z-invalid.meta
   printf definition > binaries/z-invalid
   mkdir source
   printf source-data > source/example.tar.gz
