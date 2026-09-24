@@ -64,13 +64,31 @@ EOF
 
 @test "rejects metadata without a source version" {
   write_archives
-  sed -i '/^source_version=/d' binaries/3.14.0-ubuntu-24.04-x86_64.meta
+  sed '/^source_version=/d' binaries/3.14.0-ubuntu-24.04-x86_64.meta > missing-source.meta
+  mv missing-source.meta binaries/3.14.0-ubuntu-24.04-x86_64.meta
 
   run bash ./update.sh
   assert_failure
 
   [[ "$output" == *"Missing source version in binaries/3.14.0-ubuntu-24.04-x86_64.meta"* ]]
   [ ! -e binaries/index.tsv ]
+}
+
+@test "rejects metadata without platform fields" {
+  write_archives
+  meta=binaries/3.14.0-ubuntu-24.04-x86_64.meta
+
+  for field in os arch distro; do
+    sed "/^$field=/d" "$meta" > missing-field.meta
+    mv missing-field.meta "$meta"
+
+    run bash ./update.sh
+    assert_failure
+    [[ "$output" == *"Missing platform metadata in $meta"* ]]
+    [ ! -e binaries/index.tsv ]
+
+    write_meta 3.14.0-ubuntu-24.04-x86_64 3.14.0-ubuntu-24.04-x86_64.tar.xz
+  done
 }
 
 @test "indexes xz and gzip prebuilt archives" {

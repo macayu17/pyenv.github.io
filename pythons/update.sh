@@ -77,6 +77,12 @@ for meta in binaries/*.meta; do
     exit 1
     ;;
   esac
+  for value in "$os" "$arch" "$distro"; do
+    if [ -z "$value" ]; then
+      echo "Missing platform metadata in $meta" >&2
+      exit 1
+    fi
+  done
   case "$source_version:$name:$os:$arch:$distro" in
   *$'\n'* | *$'\t'*)
     echo "Invalid metadata in $meta" >&2
